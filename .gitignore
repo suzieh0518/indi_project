@@ -1,0 +1,8 @@
+sales.db
+sales.db-shm
+sales.db-wal
+*.xlsx
+__pycache__/
+*.pyc
+.streamlit/secrets.toml
+dashboard_2025.png
