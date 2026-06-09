@@ -55,9 +55,7 @@ INDEX_SQLS = [
 def _get_db_url():
     try:
         import streamlit as st
-        url = st.secrets.get("DATABASE_URL")
-        if url:
-            return url
+        return st.secrets["DATABASE_URL"]
     except Exception:
         pass
     return os.environ.get("DATABASE_URL")

@@ -31,6 +31,12 @@ def load_data(years, customers, mfrs, suppliers, reps, min_sales, max_sales):
 opts = get_filter_options()
 if not opts["years"]:
     st.error("데이터베이스가 비어 있습니다. 관리자 페이지에서 엑셀 파일을 업로드하세요.")
+    _url = db._get_db_url()
+    if _url:
+        st.info(f"DB 연결 주소: `{_url.split('@')[-1].split('/')[0]}`")
+        st.info(f"연도별 현황 (캐시 무시): {db.count_by_year()}")
+    else:
+        st.warning("DATABASE_URL Secret이 읽히지 않고 있습니다.")
     st.stop()
 
 # ── 사이드바 필터 ──────────────────────────────────────────────────────────────
