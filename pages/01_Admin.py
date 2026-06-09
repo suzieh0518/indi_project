@@ -18,6 +18,15 @@ if password != ADMIN_PASSWORD:
 
 db.init_db()
 
+# ── DB 연결 상태 ───────────────────────────────────────────────────────────────
+
+db_url = db._get_db_url()
+if db_url:
+    host = db_url.split("@")[-1].split("/")[0] if "@" in db_url else db_url
+    st.success(f"PostgreSQL 연결 중: `{host}`")
+else:
+    st.error("DATABASE_URL Secret이 설정되지 않았습니다. SQLite(로컬 임시 DB)를 사용 중입니다.")
+
 # ── DB 현황 ────────────────────────────────────────────────────────────────────
 
 st.subheader("현재 DB 현황")
