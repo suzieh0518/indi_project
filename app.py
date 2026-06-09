@@ -5,13 +5,13 @@ import plotly.graph_objects as go
 from pathlib import Path
 import db
 
-db.init_db()
-
 st.set_page_config(
     page_title="영업 실적 대시보드",
     page_icon="📊",
     layout="wide",
 )
+
+db.init_db()
 
 # ── 데이터 로드 ────────────────────────────────────────────────────────────────
 
