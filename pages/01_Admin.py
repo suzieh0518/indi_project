@@ -25,7 +25,12 @@ if db_url:
     host = db_url.split("@")[-1].split("/")[0] if "@" in db_url else db_url
     st.success(f"PostgreSQL 연결 중: `{host}`")
 else:
-    st.error("DATABASE_URL Secret이 설정되지 않았습니다. SQLite(로컬 임시 DB)를 사용 중입니다.")
+    st.error("DATABASE_URL Secret이 설정되지 않았습니다.")
+    try:
+        keys = list(st.secrets.keys())
+        st.info(f"현재 등록된 Secret 키: {keys if keys else '(없음)'}")
+    except Exception as e:
+        st.warning(f"Secrets 로드 실패: {e}")
 
 # ── DB 현황 ────────────────────────────────────────────────────────────────────
 
