@@ -2,8 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from pathlib import Path
-from openpyxl import load_workbook
+import db
 
 st.set_page_config(
     page_title="영업 실적 대시보드",
@@ -11,81 +10,39 @@ st.set_page_config(
     layout="wide",
 )
 
+db.init_db()
+
 # ── 데이터 로드 ────────────────────────────────────────────────────────────────
 
-def _xlsx_to_parquet(folder: Path, year: str) -> Path:
-    """xlsx → parquet 변환 (최초 1회 또는 xlsx가 더 새것일 때만)"""
-    xlsx = folder / f"{year}.xlsx"
-    pq = folder / f"{year}.parquet"
-    if not xlsx.exists():
-        return pq
-    if not pq.exists() or xlsx.stat().st_mtime > pq.stat().st_mtime:
-        df = pd.read_excel(xlsx)
-        df["연도"] = year
-        num_cols = ["수량", "매출금액", "실매출금액", "실매입금액", "실이익금액", "실이익율", "기준가매출액", "기준가"]
-        for col in num_cols:
-            if col in df.columns:
-                df[col] = pd.to_numeric(df[col], errors="coerce")
-        df.to_parquet(pq, index=False)
-    return pq
-
+opts = db.load_filter_options()
+if not opts["years"]:
+    st.error("데이터가 없습니다. 관리자 페이지에서 엑셀 파일을 업로드하세요.")
+    st.page_link("pages/01_Admin.py", label="관리자 페이지로 이동", icon="🔧")
+    st.stop()
 
 @st.cache_data
-def load_data():
-    folder = Path(__file__).parent
-    frames = []
-    for year in ["2023", "2024", "2025"]:
-        pq = _xlsx_to_parquet(folder, year)
-        if pq.exists():
-            frames.append(pd.read_parquet(pq))
-
-    if not frames:
-        st.error("엑셀 파일을 찾을 수 없습니다. 2023.xlsx / 2024.xlsx / 2025.xlsx 파일을 같은 폴더에 넣어주세요.")
-        st.stop()
-
-    df = pd.concat(frames, ignore_index=True)
-    df = df.dropna(subset=["실매출금액"])
-    return df
-
-df_all = load_data()
+def load_data(years, customers, mfrs, suppliers, reps, min_sales, max_sales):
+    return db.load_filtered_data(years, customers, mfrs, suppliers, reps, min_sales, max_sales)
 
 # ── 사이드바 필터 ──────────────────────────────────────────────────────────────
 
 with st.sidebar:
     st.title("🔍 필터")
 
-    # 연도
-    years = sorted(df_all["연도"].unique())
-    sel_years = st.multiselect("연도", years, default=years)
+    sel_years     = st.multiselect("연도",   opts["years"],         default=opts["years"])
+    sel_customers = st.multiselect("매출처", opts["customers"],     default=[])
+    sel_mfr       = st.multiselect("제조사", opts["manufacturers"], default=[])
+    sel_suppliers = st.multiselect("매입처", opts["suppliers"],     default=[])
+    sel_reps      = st.multiselect("담당자", opts["reps"],          default=[])
 
-    # 매출처
-    customers = sorted(df_all["매출처"].dropna().unique())
-    sel_customers = st.multiselect("매출처", customers, default=[])
-
-    # 제조사
-    manufacturers = sorted(df_all["제조사"].dropna().unique())
-    sel_mfr = st.multiselect("제조사", manufacturers, default=[])
-
-    # 매입처
-    suppliers = sorted(df_all["매입처"].dropna().unique())
-    sel_suppliers = st.multiselect("매입처", suppliers, default=[])
-
-    # 담당자
-    reps = sorted(df_all["담당자"].dropna().unique())
-    sel_reps = st.multiselect("담당자", reps, default=[])
-
-    # 실매출금액 범위
-    min_sales = int(df_all["실매출금액"].min())
-    max_sales = int(df_all["실매출금액"].max())
     sales_range = st.slider(
         "실매출금액 범위 (원)",
-        min_value=min_sales,
-        max_value=max_sales,
-        value=(min_sales, max_sales),
+        min_value=opts["min_sales"],
+        max_value=opts["max_sales"],
+        value=(opts["min_sales"], opts["max_sales"]),
         format="%d",
     )
 
-    # Top N 설정
     top_n = st.slider("차트 Top N", min_value=5, max_value=30, value=10)
 
     st.divider()
@@ -93,20 +50,15 @@ with st.sidebar:
 
 # ── 필터 적용 ──────────────────────────────────────────────────────────────────
 
-df = df_all.copy()
-
-if sel_years:
-    df = df[df["연도"].isin(sel_years)]
-if sel_customers:
-    df = df[df["매출처"].isin(sel_customers)]
-if sel_mfr:
-    df = df[df["제조사"].isin(sel_mfr)]
-if sel_suppliers:
-    df = df[df["매입처"].isin(sel_suppliers)]
-if sel_reps:
-    df = df[df["담당자"].isin(sel_reps)]
-
-df = df[(df["실매출금액"] >= sales_range[0]) & (df["실매출금액"] <= sales_range[1])]
+df = load_data(
+    years=tuple(sel_years),
+    customers=tuple(sel_customers),
+    mfrs=tuple(sel_mfr),
+    suppliers=tuple(sel_suppliers),
+    reps=tuple(sel_reps),
+    min_sales=sales_range[0],
+    max_sales=sales_range[1],
+)
 
 # ── KPI 카드 ───────────────────────────────────────────────────────────────────
 
@@ -370,28 +322,20 @@ with tab5:
 with tab6:
     st.subheader("새 거래 건 입력")
 
-    folder = Path(__file__).parent
-
-    # 기존 데이터에서 자동완성용 목록 추출
-    suppliers_list  = sorted(df_all["매입처"].dropna().unique().tolist())
-    mfr_list        = sorted(df_all["제조사"].dropna().unique().tolist())
-    customer_list   = sorted(df_all["매출처"].dropna().unique().tolist())
-    rep_list        = sorted(df_all["담당자"].dropna().unique().tolist())
-
     with st.form("data_entry_form", clear_on_submit=True):
         c1, c2, c3 = st.columns(3)
 
         with c1:
             st.markdown("**기본 정보**")
             year_sel   = st.selectbox("연도 *", ["2025", "2024", "2023"])
-            supplier   = st.selectbox("매입처 *", suppliers_list)
+            supplier   = st.selectbox("매입처 *", opts["suppliers"])
             new_supp   = st.text_input("매입처 직접 입력 (신규일 때만)")
-            mfr        = st.selectbox("제조사 *", mfr_list)
+            mfr        = st.selectbox("제조사 *", opts["manufacturers"])
             new_mfr    = st.text_input("제조사 직접 입력 (신규일 때만)")
-            customer   = st.selectbox("매출처 *", customer_list)
+            customer   = st.selectbox("매출처 *", opts["customers"])
             new_cust   = st.text_input("매출처 직접 입력 (신규일 때만)")
             inv_loc    = st.text_input("재고적용처", placeholder="매출처와 같으면 비워도 됩니다")
-            rep        = st.selectbox("담당자 *", rep_list)
+            rep        = st.selectbox("담당자 *", opts["reps"])
 
         with c2:
             st.markdown("**제품 정보**")
@@ -409,12 +353,12 @@ with tab6:
 
             st.divider()
             st.markdown("**자동 계산 미리보기**")
-            sales_amt    = unit_price * qty
-            act_sales    = actual_unit_price * qty
-            act_purch    = actual_unit_purch * qty
-            act_profit   = act_sales - act_purch
-            profit_rate  = (act_profit / act_sales * 100) if act_sales > 0 else 0.0
-            ref_sales    = ref_price * qty
+            sales_amt   = unit_price * qty
+            act_sales   = actual_unit_price * qty
+            act_purch   = actual_unit_purch * qty
+            act_profit  = act_sales - act_purch
+            profit_rate = (act_profit / act_sales * 100) if act_sales > 0 else 0.0
+            ref_sales   = ref_price * qty
 
             st.caption(f"매출금액: **{sales_amt:,}원**")
             st.caption(f"실매출금액: **{act_sales:,}원**")
@@ -426,7 +370,6 @@ with tab6:
         submitted = st.form_submit_button("💾 저장", use_container_width=True, type="primary")
 
     if submitted:
-        # 신규 입력값 우선 적용
         final_supplier = new_supp.strip() if new_supp.strip() else supplier
         final_mfr      = new_mfr.strip()  if new_mfr.strip()  else mfr
         final_customer = new_cust.strip() if new_cust.strip() else customer
@@ -435,38 +378,19 @@ with tab6:
         if not product.strip():
             st.error("제품명은 필수입니다.")
         else:
-            filepath = folder / f"{year_sel}.xlsx"
-            wb = load_workbook(filepath)
-            ws = wb.active
-
-            # 다음 순번 계산
-            seq_vals = [row[0].value for row in ws.iter_rows(min_row=2) if row[0].value is not None]
-            next_seq = (max(seq_vals) + 1) if seq_vals else 1
-
-            ws.append([
-                next_seq,
-                final_supplier,
-                final_mfr,
-                final_customer,
-                final_inv_loc,
-                product.strip(),
-                spec.strip(),
-                ins_code.strip(),
-                ref_price,
-                qty,
-                unit_price,
-                sales_amt,
-                actual_unit_price,
-                act_sales,
-                actual_unit_purch,
-                act_purch,
-                act_profit,
-                profit_rate,
-                rep,
-                ref_sales,
-            ])
-            wb.save(filepath)
-            load_data.clear()
-
+            next_seq = db.get_next_seq(year_sel)
+            db.insert_row({
+                "연도": year_sel, "순번": next_seq,
+                "매입처": final_supplier, "제조사": final_mfr,
+                "매출처": final_customer, "재고적용처": final_inv_loc,
+                "제품명": product.strip(), "규격": spec.strip(), "보험코드": ins_code.strip(),
+                "기준가": ref_price, "수량": qty,
+                "매출단가": unit_price, "매출금액": sales_amt,
+                "실매출단가": actual_unit_price, "실매출금액": act_sales,
+                "실매입단가": actual_unit_purch, "실매입금액": act_purch,
+                "실이익금액": act_profit, "실이익율": profit_rate,
+                "담당자": rep, "기준가매출액": ref_sales,
+            })
+            st.cache_data.clear()
             st.success(f"✅ {year_sel}년 데이터에 저장되었습니다. (순번 {next_seq})")
             st.rerun()

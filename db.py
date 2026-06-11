@@ -172,7 +172,8 @@ def insert_dataframe(df: pd.DataFrame, year: str) -> int:
     df["연도"] = year
     cols = [c for c in COLUMNS if c in df.columns]
     engine = get_engine()
-    df[cols].to_sql("sales", engine, if_exists="append", index=False, method="multi")
+    # SQLite는 변수 999개 제한 → 21컬럼 기준 최대 47행/배치
+    df[cols].to_sql("sales", engine, if_exists="append", index=False, method="multi", chunksize=40)
     return len(df)
 
 
