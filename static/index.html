@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="영업실적">
+  <meta name="theme-color" content="#6366F1">
+  <title>영업 실적 대시보드</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/icon.svg">
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.46.0/dist/apexcharts.min.js"></script>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <button class="header-btn" id="filter-btn">
+    <span>⚙</span> 필터 <span class="filter-badge" id="filter-badge" style="display:none">0</span>
+  </button>
+  <span class="header-title">📊 영업 실적</span>
+  <div class="header-right">
+    <select class="topn-select" id="topn-select">
+      <option value="5">Top 5</option>
+      <option value="10" selected>Top 10</option>
+      <option value="15">Top 15</option>
+      <option value="20">Top 20</option>
+    </select>
+  </div>
+</header>
+
+<!-- KPI Cards -->
+<section class="kpi-section" id="kpi-section">
+  <div class="loading"><div class="spinner"></div> 불러오는 중...</div>
+</section>
+
+<!-- Main Content -->
+<main class="main">
+  <div class="tab-content active" id="tab-yearly">
+    <div class="loading"><div class="spinner"></div></div>
+  </div>
+  <div class="tab-content" id="tab-customers">
+    <div class="loading"><div class="spinner"></div></div>
+  </div>
+  <div class="tab-content" id="tab-mfr">
+    <div class="loading"><div class="spinner"></div></div>
+  </div>
+  <div class="tab-content" id="tab-reps">
+    <div class="loading"><div class="spinner"></div></div>
+  </div>
+  <div class="tab-content" id="tab-products">
+    <div class="loading"><div class="spinner"></div></div>
+  </div>
+  <div class="tab-content" id="tab-entry">
+    <div class="loading"><div class="spinner"></div></div>
+  </div>
+</main>
+
+<!-- Bottom Navigation -->
+<nav class="bottom-nav">
+  <button class="nav-btn active" data-tab="yearly">
+    <span class="nav-icon">📅</span>연도별
+  </button>
+  <button class="nav-btn" data-tab="customers">
+    <span class="nav-icon">🏥</span>매출처
+  </button>
+  <button class="nav-btn" data-tab="mfr">
+    <span class="nav-icon">🏭</span>제조사
+  </button>
+  <button class="nav-btn" data-tab="reps">
+    <span class="nav-icon">👤</span>담당자
+  </button>
+  <button class="nav-btn" data-tab="products">
+    <span class="nav-icon">📦</span>제품
+  </button>
+  <button class="nav-btn" data-tab="entry">
+    <span class="nav-icon">➕</span>입력
+  </button>
+</nav>
+
+<!-- Filter Overlay -->
+<div class="filter-overlay" id="filter-overlay">
+  <div class="filter-panel" id="filter-panel">
+    <div class="filter-header">
+      <h2>🔍 필터</h2>
+      <button class="filter-close" id="filter-close">✕</button>
+    </div>
+    <div class="filter-body" id="filter-body">
+      <div class="loading"><div class="spinner"></div></div>
+    </div>
+    <div class="filter-footer">
+      <button class="btn-reset" id="filter-reset">초기화</button>
+      <button class="btn-apply" id="filter-apply">적용하기</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script src="/js/app.js"></script>
+</body>
+</html>
