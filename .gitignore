@@ -3,3 +3,5 @@ __pycache__/
 *.pyc
 .DS_Store
 sales.db
+nextapp/.next/
+nextapp/node_modules/

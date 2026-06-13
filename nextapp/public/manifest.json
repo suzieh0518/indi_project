@@ -1,0 +1,13 @@
+{
+  "name": "영업 실적 대시보드",
+  "short_name": "영업실적",
+  "description": "영업 실적 분석 및 데이터 입력 앱",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F1F5F9",
+  "theme_color": "#6366F1",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
